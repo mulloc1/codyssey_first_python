@@ -104,6 +104,50 @@ class TestQuizGame(unittest.TestCase):
             self.assertEqual(len(game.quizzes), initial_count)
             self.assertFalse(game._is_running)
 
+    def test_menu_choice_three_dispatches_list_quizzes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            with patch.object(game, "list_quizzes") as list_quizzes_mock:
+                game._dispatch_menu(3)
+            list_quizzes_mock.assert_called_once()
+
+    def test_list_quizzes_handles_empty_list(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            game.quizzes = []
+            with patch("builtins.print") as print_mock:
+                game.list_quizzes()
+            print_mock.assert_any_call("등록된 퀴즈가 없습니다.")
+
+    def test_list_quizzes_prints_numbered_questions(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            game.quizzes = [
+                Quiz("문제A", ["a", "b", "c", "d"], 1),
+                Quiz("문제B", ["a", "b", "c", "d"], 2),
+            ]
+            with patch("builtins.print") as print_mock:
+                game.list_quizzes()
+
+            print_mock.assert_any_call("\n=== 퀴즈 목록 ===")
+            print_mock.assert_any_call("1. 문제A")
+            print_mock.assert_any_call("2. 문제B")
+
+    def test_list_quizzes_reflects_added_quiz(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_path = Path(temp_dir) / "state.json"
+            game = QuizGame(state_file_path=state_path)
+            with patch(
+                "builtins.input",
+                side_effect=["목록 확인 문제", "a", "b", "c", "d", "1", ""],
+            ):
+                game.add_quiz()
+
+            reloaded = QuizGame(state_file_path=state_path)
+            with patch("builtins.print") as print_mock:
+                reloaded.list_quizzes()
+            print_mock.assert_any_call(f"{len(reloaded.quizzes)}. 목록 확인 문제")
+
 
 if __name__ == "__main__":
     unittest.main()
