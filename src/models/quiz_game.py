@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from src.data import build_default_quizzes
 from src.models.quiz import Quiz
 
@@ -5,11 +8,13 @@ from src.models.quiz import Quiz
 class QuizGame:
     """Game container with default quizzes loaded on startup."""
 
-    def __init__(self) -> None:
+    def __init__(self, state_file_path: str | Path = "state.json") -> None:
         self.quizzes: list[Quiz] = build_default_quizzes()
         self.best_score = 0
         self.history: list[dict] = []
         self._is_running = True
+        self.state_file_path = Path(state_file_path)
+        self.load_state()
 
     def show_menu(self) -> None:
         print("\n=== Quiz Game ===")
@@ -43,8 +48,35 @@ class QuizGame:
             return choice
 
     def save_state(self) -> None:
-        # 파일 저장 기능은 다음 단계에서 구현한다.
-        return None
+        payload = {
+            "quizzes": [quiz.to_dict() for quiz in self.quizzes],
+            "best_score": self.best_score,
+        }
+        try:
+            with self.state_file_path.open("w", encoding="utf-8") as file:
+                json.dump(payload, file, ensure_ascii=False, indent=2)
+        except OSError:
+            print("상태 저장에 실패했습니다. 다음 실행 시 복구를 시도합니다.")
+
+    def load_state(self) -> None:
+        if not self.state_file_path.exists():
+            return
+
+        try:
+            with self.state_file_path.open("r", encoding="utf-8") as file:
+                data = json.load(file)
+
+            quizzes_data = data["quizzes"]
+            best_score = data["best_score"]
+            if not isinstance(quizzes_data, list) or not isinstance(best_score, int):
+                raise ValueError("invalid state schema")
+
+            self.quizzes = [Quiz.from_dict(item) for item in quizzes_data]
+            self.best_score = best_score
+        except (OSError, json.JSONDecodeError, KeyError, ValueError, TypeError):
+            print("상태 파일을 읽을 수 없어 기본 데이터로 복구합니다.")
+            self.quizzes = build_default_quizzes()
+            self.best_score = 0
 
     def _handle_safe_shutdown(self) -> None:
         print("\n입력이 중단되어 프로그램을 안전하게 종료합니다.")
