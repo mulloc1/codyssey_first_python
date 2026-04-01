@@ -1,4 +1,4 @@
-from src.models import QuizGame
+from src.models.quiz_game import QuizGame
 
 
 def main() -> None:

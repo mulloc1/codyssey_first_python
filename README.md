@@ -20,8 +20,14 @@ first_python/
 │     ├─ __init__.py
 │     ├─ quiz.py
 │     └─ quiz_game.py
+├─ tests/
+│  └─ test_data_init.py
 └─ docs/
    ├─ subject.md
    ├─ plan.md
-   └─ plan_2.md
+   ├─ plan_2.md
+   ├─ testing_guidelines.md
+   └─ insights/
+      └─ python_package_and_object_lifecycle_insights.md
+
 ```
