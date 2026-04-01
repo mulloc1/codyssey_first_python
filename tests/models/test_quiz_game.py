@@ -55,6 +55,55 @@ class TestQuizGame(unittest.TestCase):
                 game._dispatch_menu(1)
             play_quiz_mock.assert_called_once()
 
+    def test_add_quiz_adds_new_item_and_saves(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_path = Path(temp_dir) / "state.json"
+            game = QuizGame(state_file_path=state_path)
+            initial_count = len(game.quizzes)
+            with patch(
+                "builtins.input",
+                side_effect=["새 문제", "선택1", "선택2", "선택3", "선택4", "2", "힌트"],
+            ):
+                game.add_quiz()
+
+            self.assertEqual(len(game.quizzes), initial_count + 1)
+            self.assertTrue(state_path.exists())
+
+            reloaded = QuizGame(state_file_path=state_path)
+            self.assertTrue(any(q.question == "새 문제" for q in reloaded.quizzes))
+
+    def test_add_quiz_retries_invalid_answer_input(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            with patch(
+                "builtins.input",
+                side_effect=[
+                    "문제",
+                    "a",
+                    "b",
+                    "c",
+                    "d",
+                    "",
+                    "abc",
+                    "9",
+                    "1",
+                    "",
+                ],
+            ):
+                game.add_quiz()
+
+            self.assertTrue(any(q.question == "문제" and q.answer == 1 for q in game.quizzes))
+
+    def test_add_quiz_interrupt_keeps_data_unchanged(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            initial_count = len(game.quizzes)
+            with patch("builtins.input", side_effect=["문제", KeyboardInterrupt]):
+                game.add_quiz()
+
+            self.assertEqual(len(game.quizzes), initial_count)
+            self.assertFalse(game._is_running)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -66,6 +66,26 @@ class QuizGame:
                 continue
             return answer
 
+    def _get_non_empty_text(self, prompt: str) -> str | None:
+        while True:
+            try:
+                raw = input(prompt).strip()
+            except (KeyboardInterrupt, EOFError):
+                self._handle_safe_shutdown()
+                return None
+            if not raw:
+                print("입력을 확인해주세요. 비어 있는 값은 사용할 수 없습니다.")
+                continue
+            return raw
+
+    def _get_optional_text(self, prompt: str) -> str | None:
+        try:
+            raw = input(prompt).strip()
+        except (KeyboardInterrupt, EOFError):
+            self._handle_safe_shutdown()
+            return None
+        return raw or None
+
     def load_state(self) -> None:
         if not self.state_file_path.exists():
             return
@@ -136,7 +156,29 @@ class QuizGame:
         self.save_state()
 
     def add_quiz(self) -> None:
-        print("퀴즈 추가 기능은 다음 단계에서 구현됩니다.")
+        question = self._get_non_empty_text("문제를 입력하세요: ")
+        if question is None:
+            return
+
+        choices: list[str] = []
+        for idx in range(1, 5):
+            choice = self._get_non_empty_text(f"{idx}번 선택지를 입력하세요: ")
+            if choice is None:
+                return
+            choices.append(choice)
+
+        answer = self._get_quiz_answer()
+        if answer is None:
+            return
+
+        hint = self._get_optional_text("힌트를 입력하세요(선택): ")
+        if not self._is_running:
+            return
+
+        new_quiz = Quiz(question=question, choices=choices, answer=answer, hint=hint)
+        self.quizzes.append(new_quiz)
+        self.save_state()
+        print("새 퀴즈가 추가되었습니다.")
 
     def list_quizzes(self) -> None:
         print("퀴즈 목록 기능은 다음 단계에서 구현됩니다.")
