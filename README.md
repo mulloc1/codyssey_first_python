@@ -16,8 +16,10 @@ first_python/
 ├─ README.md
 ├─ .gitignore
 ├─ src/
-│  ├─ quiz.py
-│  └─ quiz_game.py
+│  └─ models/
+│     ├─ __init__.py
+│     ├─ quiz.py
+│     └─ quiz_game.py
 └─ docs/
    ├─ subject.md
    ├─ plan.md
