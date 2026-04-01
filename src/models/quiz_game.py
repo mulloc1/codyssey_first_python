@@ -190,6 +190,9 @@ class QuizGame:
             print(f"{idx}. {quiz.question}")
 
     def show_best_score(self) -> None:
+        if self.best_score == 0:
+            print("아직 플레이 기록이 없습니다.")
+            return
         print(f"현재 최고 점수: {self.best_score}")
 
     def _dispatch_menu(self, choice: int) -> None:

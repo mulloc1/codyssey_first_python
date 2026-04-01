@@ -148,6 +148,29 @@ class TestQuizGame(unittest.TestCase):
                 reloaded.list_quizzes()
             print_mock.assert_any_call(f"{len(reloaded.quizzes)}. 목록 확인 문제")
 
+    def test_menu_choice_four_dispatches_show_best_score(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            with patch.object(game, "show_best_score") as show_best_score_mock:
+                game._dispatch_menu(4)
+            show_best_score_mock.assert_called_once()
+
+    def test_show_best_score_when_no_play_history(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            game.best_score = 0
+            with patch("builtins.print") as print_mock:
+                game.show_best_score()
+            print_mock.assert_any_call("아직 플레이 기록이 없습니다.")
+
+    def test_show_best_score_when_score_exists(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            game.best_score = 3
+            with patch("builtins.print") as print_mock:
+                game.show_best_score()
+            print_mock.assert_any_call("현재 최고 점수: 3")
+
 
 if __name__ == "__main__":
     unittest.main()
