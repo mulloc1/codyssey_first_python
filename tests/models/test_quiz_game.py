@@ -278,6 +278,67 @@ class TestQuizGame(unittest.TestCase):
                 game._dispatch_menu(Menu.SCORE)
             show_best_score_mock.assert_called_once()
 
+    def test_menu_choice_five_dispatches_delete_quiz(self) -> None:
+        # 메뉴 선택 5가 내부적으로 `delete_quiz()`를 호출하는지 확인한다.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            with patch.object(game, "delete_quiz") as delete_quiz_mock:
+                game._dispatch_menu(Menu.DELETE)
+            delete_quiz_mock.assert_called_once()
+
+    def test_delete_quiz_handles_empty_list(self) -> None:
+        # 퀴즈가 없을 때 삭제 진입 시 안내 메시지만 출력하는지 확인한다.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            game.quizzes = []
+            with patch("builtins.print") as print_mock:
+                game.delete_quiz()
+            print_mock.assert_any_call("삭제할 퀴즈가 없습니다.")
+
+    def test_delete_quiz_removes_item_and_saves_state(self) -> None:
+        # 유효한 번호로 삭제하면 목록이 줄고 상태 파일에 반영되는지 확인한다.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_path = Path(temp_dir) / "state.json"
+            game = QuizGame(state_file_path=state_path)
+            game.quizzes = [
+                Quiz("A", ["a", "b", "c", "d"], 1, "hA"),
+                Quiz("B", ["a", "b", "c", "d"], 2, "hB"),
+            ]
+            with patch("builtins.input", side_effect=["1"]):
+                game.delete_quiz()
+
+            self.assertEqual(len(game.quizzes), 1)
+            self.assertEqual(game.quizzes[0].question, "B")
+            reloaded = QuizGame(state_file_path=state_path)
+            self.assertEqual(len(reloaded.quizzes), 1)
+            self.assertEqual(reloaded.quizzes[0].question, "B")
+
+    def test_delete_quiz_retries_invalid_index_input(self) -> None:
+        # 삭제 번호 입력이 잘못되면 재입력을 요구하는지 확인한다.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            game.quizzes = [
+                Quiz("A", ["a", "b", "c", "d"], 1, "hA"),
+                Quiz("B", ["a", "b", "c", "d"], 2, "hB"),
+            ]
+            with patch("builtins.input", side_effect=["", "abc", "9", "2"]):
+                game.delete_quiz()
+
+            self.assertEqual(len(game.quizzes), 1)
+            self.assertEqual(game.quizzes[0].question, "A")
+
+    def test_delete_quiz_handles_keyboard_interrupt_safely(self) -> None:
+        # 삭제 번호 입력 중 인터럽트가 발생하면 안전 종료 플래그가 꺼지는지 확인한다.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            game.quizzes = [Quiz("A", ["a", "b", "c", "d"], 1, "hA")]
+            initial_count = len(game.quizzes)
+            with patch("builtins.input", side_effect=KeyboardInterrupt):
+                game.delete_quiz()
+
+            self.assertEqual(len(game.quizzes), initial_count)
+            self.assertFalse(game._is_running)
+
     def test_show_best_score_when_no_play_history(self) -> None:
         # 최고 점수가 0일 때 `show_best_score()`가 현재 점수를 그대로 출력하는지 확인한다.
         with tempfile.TemporaryDirectory() as temp_dir:

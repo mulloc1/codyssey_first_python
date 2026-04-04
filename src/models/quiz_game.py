@@ -12,7 +12,8 @@ class Menu(IntEnum):
     ADD = 2
     LIST = 3
     SCORE = 4
-    QUIT = 5
+    DELETE = 5
+    QUIT = 6
 
 
 class QuizGame:
@@ -32,12 +33,13 @@ class QuizGame:
         print("2. 퀴즈 추가")
         print("3. 퀴즈 목록")
         print("4. 점수 확인")
-        print("5. 종료")
+        print("5. 퀴즈 삭제")
+        print("6. 종료")
 
     def get_menu_choice(self) -> Menu | None:
         while True:
             try:
-                raw = input("메뉴를 선택하세요 (1-5): ").strip()
+                raw = input("메뉴를 선택하세요 (1-6): ").strip()
             except (KeyboardInterrupt, EOFError):
                 self._handle_safe_shutdown()
                 return None
@@ -53,7 +55,7 @@ class QuizGame:
             try:
                 return Menu(choice_number)
             except ValueError:
-                print("1에서 5 사이 숫자를 입력해주세요.")
+                print("1에서 6 사이 숫자를 입력해주세요.")
                 continue
 
     def _get_quiz_answer(self) -> int | None:
@@ -268,6 +270,45 @@ class QuizGame:
         for idx, quiz in enumerate(self.quizzes, start=1):
             print(f"{idx}. {quiz.question}")
 
+    def _get_delete_index(self, total: int) -> int | None:
+        while True:
+            try:
+                raw = input(f"삭제할 퀴즈 번호를 입력하세요 (1-{total}): ").strip()
+            except (KeyboardInterrupt, EOFError):
+                self._handle_safe_shutdown()
+                return None
+
+            if not raw:
+                print("입력을 확인해주세요. 비어 있는 값은 사용할 수 없습니다.")
+                continue
+            try:
+                index = int(raw)
+            except ValueError:
+                print("숫자로 입력해주세요.")
+                continue
+            if not 1 <= index <= total:
+                print(f"1에서 {total} 사이 숫자를 입력해주세요.")
+                continue
+            return index
+
+    def delete_quiz(self) -> None:
+        if not self.quizzes:
+            print("삭제할 퀴즈가 없습니다.")
+            return
+
+        print("\n=== 퀴즈 삭제 ===")
+        for idx, quiz in enumerate(self.quizzes, start=1):
+            print(f"{idx}. {quiz.question}")
+
+        total = len(self.quizzes)
+        delete_index = self._get_delete_index(total)
+        if delete_index is None:
+            return
+
+        removed = self.quizzes.pop(delete_index - 1)
+        self.save_state()
+        print(f"퀴즈를 삭제했습니다: {removed.question}")
+
     def show_best_score(self) -> None:
         print(f"현재 최고 점수: {self.best_score}")
 
@@ -280,6 +321,8 @@ class QuizGame:
             self.list_quizzes()
         elif choice == Menu.SCORE:
             self.show_best_score()
+        elif choice == Menu.DELETE:
+            self.delete_quiz()
         elif choice == Menu.QUIT:
             print("프로그램을 종료합니다.")
             self._is_running = False
