@@ -6,7 +6,6 @@ class Quiz:
         question: str,
         choices: list[str],
         answer: int,
-        hint: str | None = None,
     ) -> None:
         # question 공백 제거
         question_clean = question.strip()
@@ -40,15 +39,9 @@ class Quiz:
         if answer < 1 or answer > 4:
             raise ValueError("answer must be in range 1..4")
 
-        # hint 타입 검증
-        # JSON 로드 데이터는 신뢰할 수 없으므로 hint 타입을 검증한다.
-        if hint is not None and not isinstance(hint, str):
-            raise ValueError("hint must be a string or None")
-
         self.question = question_clean
         self.choices = normalized_choices
         self.answer = answer
-        self.hint = hint.strip() if isinstance(hint, str) else None
 
     # 질문들의 출력 형태를 만들어 리턴하는 메서드
     def format_question(self) -> str:
@@ -69,7 +62,6 @@ class Quiz:
             "question": self.question,
             "choices": self.choices,
             "answer": self.answer,
-            "hint": self.hint,
         }
 
     # 딕셔너리를 객체로 변환하는 클래스 메서드
@@ -81,5 +73,4 @@ class Quiz:
             question=data["question"],
             choices=data["choices"],
             answer=data["answer"],
-            hint=data.get("hint"),
         )

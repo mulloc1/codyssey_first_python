@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from src.models.quiz import Quiz
-from src.models.quiz_game import QuizGame
+from src.models.quiz_game import Menu, QuizGame
 
 
 class TestQuizGame(unittest.TestCase):
@@ -57,7 +57,7 @@ class TestQuizGame(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
             with patch.object(game, "play_quiz") as play_quiz_mock:
-                game._dispatch_menu(1)
+                game._dispatch_menu(Menu.PLAY)
             play_quiz_mock.assert_called_once()
 
     def test_add_quiz_adds_new_item_and_saves(self) -> None:
@@ -117,7 +117,7 @@ class TestQuizGame(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
             with patch.object(game, "list_quizzes") as list_quizzes_mock:
-                game._dispatch_menu(3)
+                game._dispatch_menu(Menu.LIST)
             list_quizzes_mock.assert_called_once()
 
     def test_list_quizzes_handles_empty_list(self) -> None:
@@ -165,17 +165,17 @@ class TestQuizGame(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
             with patch.object(game, "show_best_score") as show_best_score_mock:
-                game._dispatch_menu(4)
+                game._dispatch_menu(Menu.SCORE)
             show_best_score_mock.assert_called_once()
 
     def test_show_best_score_when_no_play_history(self) -> None:
-        # 최고 점수가 0(플레이 기록 없음)일 때 `show_best_score()`가 적절한 안내를 출력하는지 확인한다.
+        # 최고 점수가 0일 때 `show_best_score()`가 현재 점수를 그대로 출력하는지 확인한다.
         with tempfile.TemporaryDirectory() as temp_dir:
             game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
             game.best_score = 0
             with patch("builtins.print") as print_mock:
                 game.show_best_score()
-            print_mock.assert_any_call("아직 플레이 기록이 없습니다.")
+            print_mock.assert_any_call("현재 최고 점수: 0")
 
     def test_show_best_score_when_score_exists(self) -> None:
         # 최고 점수가 존재할 때 `show_best_score()`가 현재 최고 점수를 출력하는지 확인한다.
