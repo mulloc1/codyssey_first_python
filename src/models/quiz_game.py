@@ -77,6 +77,27 @@ class QuizGame:
                 continue
             return answer
 
+    def _get_question_count(self, max_count: int) -> int | None:
+        while True:
+            try:
+                raw = input(f"몇 문제를 풀까요? (1-{max_count}): ").strip()
+            except (KeyboardInterrupt, EOFError):
+                self._handle_safe_shutdown()
+                return None
+
+            if not raw:
+                print("입력을 확인해주세요. 비어 있는 값은 사용할 수 없습니다.")
+                continue
+            try:
+                question_count = int(raw)
+            except ValueError:
+                print("숫자로 입력해주세요.")
+                continue
+            if not 1 <= question_count <= max_count:
+                print(f"1에서 {max_count} 사이 숫자를 입력해주세요.")
+                continue
+            return question_count
+
     def _get_non_empty_text(self, prompt: str) -> str | None:
         while True:
             try:
@@ -139,13 +160,18 @@ class QuizGame:
             print("출제할 퀴즈가 없습니다.")
             return
 
+        question_count = self._get_question_count(len(self.quizzes))
+        if question_count is None:
+            return
+
         correct_count = 0
         # list()로 복사하여 원본 데이터를 변경하지 않음
         shuffled_quizzes = list(self.quizzes)
         random.shuffle(shuffled_quizzes)
-        total = len(shuffled_quizzes)
+        selected_quizzes = shuffled_quizzes[:question_count]
+        total = len(selected_quizzes)
 
-        for index, quiz in enumerate(shuffled_quizzes, start=1):
+        for index, quiz in enumerate(selected_quizzes, start=1):
             if not self._is_running:
                 return
 

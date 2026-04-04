@@ -25,7 +25,10 @@ class TestQuizGame(unittest.TestCase):
                 Quiz("Q1", ["a", "b", "c", "d"], 2),
                 Quiz("Q2", ["a", "b", "c", "d"], 1),
             ]
-            with patch("builtins.input", side_effect=["", "abc", "5", "2", "1"]):
+            with (
+                patch("src.models.quiz_game.random.shuffle", side_effect=lambda quizzes: None),
+                patch("builtins.input", side_effect=["2", "", "abc", "5", "2", "1"]),
+            ):
                 game.play_quiz()
 
             self.assertEqual(game.best_score, 2)
@@ -36,7 +39,7 @@ class TestQuizGame(unittest.TestCase):
             state_path = Path(temp_dir) / "state.json"
             game = QuizGame(state_file_path=state_path)
             game.quizzes = [Quiz("Q1", ["a", "b", "c", "d"], 1)]
-            with patch("builtins.input", side_effect=["1"]):
+            with patch("builtins.input", side_effect=["1", "1"]):
                 game.play_quiz()
             self.assertTrue(state_path.exists())
 
@@ -48,7 +51,7 @@ class TestQuizGame(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
             game.quizzes = [Quiz("Q1", ["a", "b", "c", "d"], 1)]
-            with patch("builtins.input", side_effect=KeyboardInterrupt):
+            with patch("builtins.input", side_effect=["1", KeyboardInterrupt]):
                 game.play_quiz()
             self.assertFalse(game._is_running)
 
@@ -66,7 +69,7 @@ class TestQuizGame(unittest.TestCase):
 
             with (
                 patch("src.models.quiz_game.random.shuffle", side_effect=reverse_quizzes),
-                patch("builtins.input", side_effect=["1", "1"]),
+                patch("builtins.input", side_effect=["2", "1", "1"]),
                 patch("builtins.print") as print_mock,
             ):
                 game.play_quiz()
@@ -81,6 +84,65 @@ class TestQuizGame(unittest.TestCase):
                 [game.quizzes[1].format_question(), game.quizzes[0].format_question()],
             )
             self.assertEqual([quiz.question for quiz in game.quizzes], ["Q1", "Q2"])
+
+    def test_play_quiz_retries_invalid_question_count_input(self) -> None:
+        # 문제 수 입력이 유효하지 않으면 재입력을 요구하고, 유효한 값 이후 정상 진행하는지 확인한다.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            game.quizzes = [
+                Quiz("Q1", ["a", "b", "c", "d"], 1),
+                Quiz("Q2", ["a", "b", "c", "d"], 1),
+            ]
+            with (
+                patch("builtins.input", side_effect=["", "abc", "3", "1", "1"]),
+                patch("builtins.print") as print_mock,
+            ):
+                game.play_quiz()
+
+            print_mock.assert_any_call("입력을 확인해주세요. 비어 있는 값은 사용할 수 없습니다.")
+            print_mock.assert_any_call("숫자로 입력해주세요.")
+            print_mock.assert_any_call("1에서 2 사이 숫자를 입력해주세요.")
+            self.assertEqual(game.best_score, 1)
+
+    def test_play_quiz_handles_question_count_interrupt_safely(self) -> None:
+        # 문제 수 입력 단계에서 인터럽트가 발생해도 안전 종료 플래그가 꺼지는지 확인한다.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            game.quizzes = [Quiz("Q1", ["a", "b", "c", "d"], 1)]
+            with patch("builtins.input", side_effect=KeyboardInterrupt):
+                game.play_quiz()
+            self.assertFalse(game._is_running)
+
+    def test_play_quiz_uses_selected_count_from_shuffled_quizzes(self) -> None:
+        # 셔플된 목록에서 선택한 문제 수만큼만 출제하는지 확인한다.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            game.quizzes = [
+                Quiz("Q1", ["a", "b", "c", "d"], 1),
+                Quiz("Q2", ["a", "b", "c", "d"], 1),
+                Quiz("Q3", ["a", "b", "c", "d"], 1),
+            ]
+
+            def reverse_quizzes(quizzes: list[Quiz]) -> None:
+                quizzes.reverse()
+
+            with (
+                patch("src.models.quiz_game.random.shuffle", side_effect=reverse_quizzes),
+                patch("builtins.input", side_effect=["2", "1", "1"]),
+                patch("builtins.print") as print_mock,
+            ):
+                game.play_quiz()
+
+            printed_questions = [
+                args[0]
+                for args, _ in print_mock.call_args_list
+                if args and isinstance(args[0], str) and args[0].startswith("Q")
+            ]
+            self.assertEqual(
+                printed_questions[:2],
+                [game.quizzes[2].format_question(), game.quizzes[1].format_question()],
+            )
+            self.assertNotIn(game.quizzes[0].format_question(), printed_questions[:2])
 
     def test_menu_choice_one_dispatches_play_quiz(self) -> None:
         # 메뉴 선택 1이 내부적으로 `play_quiz()`를 호출하는지 확인한다.
