@@ -52,6 +52,36 @@ class TestQuizGame(unittest.TestCase):
                 game.play_quiz()
             self.assertFalse(game._is_running)
 
+    def test_play_quiz_uses_shuffled_order_without_mutating_source(self) -> None:
+        # 출제 시에는 셔플된 순서를 따르되, 원본 퀴즈 목록 순서는 유지되는지 확인한다.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            game.quizzes = [
+                Quiz("Q1", ["a", "b", "c", "d"], 1),
+                Quiz("Q2", ["a", "b", "c", "d"], 1),
+            ]
+
+            def reverse_quizzes(quizzes: list[Quiz]) -> None:
+                quizzes.reverse()
+
+            with (
+                patch("src.models.quiz_game.random.shuffle", side_effect=reverse_quizzes),
+                patch("builtins.input", side_effect=["1", "1"]),
+                patch("builtins.print") as print_mock,
+            ):
+                game.play_quiz()
+
+            printed_questions = [
+                args[0]
+                for args, _ in print_mock.call_args_list
+                if args and isinstance(args[0], str) and args[0].startswith("Q")
+            ]
+            self.assertEqual(
+                printed_questions[:2],
+                [game.quizzes[1].format_question(), game.quizzes[0].format_question()],
+            )
+            self.assertEqual([quiz.question for quiz in game.quizzes], ["Q1", "Q2"])
+
     def test_menu_choice_one_dispatches_play_quiz(self) -> None:
         # 메뉴 선택 1이 내부적으로 `play_quiz()`를 호출하는지 확인한다.
         with tempfile.TemporaryDirectory() as temp_dir:

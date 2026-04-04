@@ -1,4 +1,5 @@
 import json
+import random
 from enum import IntEnum
 from pathlib import Path
 
@@ -139,9 +140,12 @@ class QuizGame:
             return
 
         correct_count = 0
-        total = len(self.quizzes)
+        # list()로 복사하여 원본 데이터를 변경하지 않음
+        shuffled_quizzes = list(self.quizzes)
+        random.shuffle(shuffled_quizzes)
+        total = len(shuffled_quizzes)
 
-        for index, quiz in enumerate(self.quizzes, start=1):
+        for index, quiz in enumerate(shuffled_quizzes, start=1):
             if not self._is_running:
                 return
 
