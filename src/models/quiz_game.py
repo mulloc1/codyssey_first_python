@@ -1,8 +1,17 @@
 import json
+from enum import IntEnum
 from pathlib import Path
 
 from src.data import build_default_quizzes
 from src.models.quiz import Quiz
+
+
+class Menu(IntEnum):
+    PLAY = 1
+    ADD = 2
+    LIST = 3
+    SCORE = 4
+    QUIT = 5
 
 
 class QuizGame:
@@ -24,7 +33,7 @@ class QuizGame:
         print("4. 점수 확인")
         print("5. 종료")
 
-    def get_menu_choice(self) -> int | None:
+    def get_menu_choice(self) -> Menu | None:
         while True:
             try:
                 raw = input("메뉴를 선택하세요 (1-5): ").strip()
@@ -36,14 +45,15 @@ class QuizGame:
                 print("입력을 확인해주세요. 비어 있는 값은 사용할 수 없습니다.")
                 continue
             try:
-                choice = int(raw)
+                choice_number = int(raw)
             except ValueError:
                 print("숫자로 입력해주세요.")
                 continue
-            if not 1 <= choice <= 5:
+            try:
+                return Menu(choice_number)
+            except ValueError:
                 print("1에서 5 사이 숫자를 입력해주세요.")
                 continue
-            return choice
 
     def _get_quiz_answer(self) -> int | None:
         while True:
@@ -171,11 +181,7 @@ class QuizGame:
         if answer is None:
             return
 
-        hint = self._get_optional_text("힌트를 입력하세요(선택): ")
-        if not self._is_running:
-            return
-
-        new_quiz = Quiz(question=question, choices=choices, answer=answer, hint=hint)
+        new_quiz = Quiz(question=question, choices=choices, answer=answer)
         self.quizzes.append(new_quiz)
         self.save_state()
         print("새 퀴즈가 추가되었습니다.")
@@ -190,21 +196,18 @@ class QuizGame:
             print(f"{idx}. {quiz.question}")
 
     def show_best_score(self) -> None:
-        if self.best_score == 0:
-            print("아직 플레이 기록이 없습니다.")
-            return
         print(f"현재 최고 점수: {self.best_score}")
 
-    def _dispatch_menu(self, choice: int) -> None:
-        if choice == 1:
+    def _dispatch_menu(self, choice: Menu) -> None:
+        if choice == Menu.PLAY:
             self.play_quiz()
-        elif choice == 2:
+        elif choice == Menu.ADD:
             self.add_quiz()
-        elif choice == 3:
+        elif choice == Menu.LIST:
             self.list_quizzes()
-        elif choice == 4:
+        elif choice == Menu.SCORE:
             self.show_best_score()
-        elif choice == 5:
+        elif choice == Menu.QUIT:
             print("프로그램을 종료합니다.")
             self._is_running = False
 
