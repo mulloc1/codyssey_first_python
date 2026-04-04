@@ -77,7 +77,14 @@ first_python/
       "hint": "정답을 유추할 수 있는 짧은 설명"
     }
   ],
-  "best_score": 1
+  "best_score": 1,
+  "history": [
+    {
+      "at": "2026-04-04T14:30:00",
+      "question_count": 3,
+      "score": 2
+    }
+  ]
 }
 ```
 
@@ -87,3 +94,7 @@ first_python/
   - `answer`: 정답 번호(1..4 범위의 정수)
   - `hint`: 힌트 문자열
 - `best_score`: 최고 점수(정수)
+- `history`: 플레이 기록 배열(선택). 없으면 빈 배열로 간주한다.
+  - `at`: 기록 시각(ISO 형식 문자열)
+  - `question_count`: 해당 라운드 출제 문제 수(정수)
+  - `score`: 해당 라운드 획득 점수(정수, 힌트 반영 후)

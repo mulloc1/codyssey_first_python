@@ -1,5 +1,7 @@
+import json
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -45,6 +47,63 @@ class TestQuizGame(unittest.TestCase):
 
             reloaded = QuizGame(state_file_path=state_path)
             self.assertEqual(reloaded.best_score, 1)
+            self.assertEqual(len(reloaded.history), 1)
+            self.assertEqual(reloaded.history[0]["question_count"], 1)
+            self.assertEqual(reloaded.history[0]["score"], 1)
+            self.assertIsInstance(reloaded.history[0]["at"], str)
+
+    def test_load_state_without_history_key_uses_empty_history(self) -> None:
+        # state.json에 history 키가 없을 때 빈 기록으로 로드하는지 확인한다.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_path = Path(temp_dir) / "state.json"
+            quiz = Quiz("Q1", ["a", "b", "c", "d"], 1, "Q1 힌트")
+            payload = {"quizzes": [quiz.to_dict()], "best_score": 0}
+            state_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            game = QuizGame(state_file_path=state_path)
+            self.assertEqual(game.history, [])
+
+    def test_load_state_invalid_history_entries_yield_empty_history(self) -> None:
+        # history 항목 스키마가 잘못되면 기록만 비우고 퀴즈·최고 점수는 유지하는지 확인한다.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_path = Path(temp_dir) / "state.json"
+            quiz = Quiz("Q1", ["a", "b", "c", "d"], 1, "Q1 힌트")
+            payload = {
+                "quizzes": [quiz.to_dict()],
+                "best_score": 2,
+                "history": [{"at": "x", "question_count": "bad", "score": 1}],
+            }
+            state_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            game = QuizGame(state_file_path=state_path)
+            self.assertEqual(game.history, [])
+            self.assertEqual(game.best_score, 2)
+            self.assertEqual(len(game.quizzes), 1)
+
+    def test_play_quiz_appends_history_with_fixed_timestamp(self) -> None:
+        # 라운드 완료 시 history에 시각·문제 수·점수가 append되는지 확인한다.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            game.quizzes = [
+                Quiz("Q1", ["a", "b", "c", "d"], 2, "Q1 힌트"),
+                Quiz("Q2", ["a", "b", "c", "d"], 1, "Q2 힌트"),
+            ]
+            fixed = datetime(2026, 4, 4, 14, 30, 0)
+            with (
+                patch("src.models.quiz_game.datetime") as dt_mock,
+                patch("src.models.quiz_game.random.shuffle", side_effect=lambda quizzes: None),
+                patch("builtins.input", side_effect=["2", "2", "1"]),
+            ):
+                dt_mock.now.return_value = fixed
+                game.play_quiz()
+
+            self.assertEqual(len(game.history), 1)
+            self.assertEqual(
+                game.history[0],
+                {
+                    "at": "2026-04-04T14:30:00",
+                    "question_count": 2,
+                    "score": 2,
+                },
+            )
 
     def test_play_quiz_handles_keyboard_interrupt_safely(self) -> None:
         # `KeyboardInterrupt`가 발생해도 게임 상태 플래그(`_is_running`)가 안전하게 꺼지는지 확인한다.
@@ -340,22 +399,42 @@ class TestQuizGame(unittest.TestCase):
             self.assertFalse(game._is_running)
 
     def test_show_best_score_when_no_play_history(self) -> None:
-        # 최고 점수가 0일 때 `show_best_score()`가 현재 점수를 그대로 출력하는지 확인한다.
+        # 플레이 기록이 없을 때 최고 점수와 안내 문구를 출력하는지 확인한다.
         with tempfile.TemporaryDirectory() as temp_dir:
             game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
             game.best_score = 0
+            game.history = []
             with patch("builtins.print") as print_mock:
                 game.show_best_score()
             print_mock.assert_any_call("현재 최고 점수: 0")
+            print_mock.assert_any_call("저장된 플레이 기록이 없습니다.")
 
     def test_show_best_score_when_score_exists(self) -> None:
         # 최고 점수가 존재할 때 `show_best_score()`가 현재 최고 점수를 출력하는지 확인한다.
         with tempfile.TemporaryDirectory() as temp_dir:
             game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
             game.best_score = 3
+            game.history = []
             with patch("builtins.print") as print_mock:
                 game.show_best_score()
             print_mock.assert_any_call("현재 최고 점수: 3")
+            print_mock.assert_any_call("저장된 플레이 기록이 없습니다.")
+
+    def test_show_best_score_prints_history_newest_first(self) -> None:
+        # 플레이 기록이 있으면 최신순으로 목록을 출력하는지 확인한다.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            game.best_score = 2
+            game.history = [
+                {"at": "2026-01-01T10:00:00", "question_count": 2, "score": 1},
+                {"at": "2026-01-02T10:00:00", "question_count": 2, "score": 2},
+            ]
+            with patch("builtins.print") as print_mock:
+                game.show_best_score()
+            print_mock.assert_any_call("현재 최고 점수: 2")
+            print_mock.assert_any_call("\n=== 플레이 기록 (최신순) ===")
+            print_mock.assert_any_call("1. 2026-01-02T10:00:00 | 문제 2개 | 점수 2/2")
+            print_mock.assert_any_call("2. 2026-01-01T10:00:00 | 문제 2개 | 점수 1/2")
 
 
 if __name__ == "__main__":

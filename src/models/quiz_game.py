@@ -1,10 +1,41 @@
 import json
 import random
+from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
 
 from src.data import build_default_quizzes
 from src.models.quiz import Quiz
+
+
+def _parse_history_from_state(data: dict) -> list[dict]:
+    """Return validated history list, or [] if missing or any entry is invalid."""
+    raw = data.get("history")
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        return []
+    parsed: list[dict] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            return []
+        at = item.get("at")
+        question_count = item.get("question_count")
+        score = item.get("score")
+        if (
+            not isinstance(at, str)
+            or not isinstance(question_count, int)
+            or not isinstance(score, int)
+        ):
+            return []
+        parsed.append(
+            {
+                "at": at,
+                "question_count": question_count,
+                "score": score,
+            }
+        )
+    return parsed
 
 
 class Menu(IntEnum):
@@ -164,15 +195,18 @@ class QuizGame:
                 raise ValueError("invalid state schema")
             self.quizzes = [Quiz.from_dict(item) for item in quizzes_data]
             self.best_score = best_score
+            self.history = _parse_history_from_state(data)
         except (OSError, json.JSONDecodeError, KeyError, ValueError, TypeError):
             print("상태 파일을 읽을 수 없어 기본 데이터로 복구합니다.")
             self.quizzes = build_default_quizzes()
             self.best_score = 0
+            self.history = []
 
     def save_state(self) -> None:
         payload = {
             "quizzes": [quiz.to_dict() for quiz in self.quizzes],
             "best_score": self.best_score,
+            "history": self.history,
         }
         try:
             self.state_file_path.write_text(
@@ -229,6 +263,13 @@ class QuizGame:
 
         print(f"\n정답 수: {correct_count}/{total}")
         print(f"이번 점수: {score}/{total}")
+        self.history.append(
+            {
+                "at": datetime.now().isoformat(timespec="seconds"),
+                "question_count": total,
+                "score": score,
+            }
+        )
         if score > self.best_score:
             self.best_score = score
             print(f"최고 점수를 갱신했습니다: {self.best_score}")
@@ -311,6 +352,14 @@ class QuizGame:
 
     def show_best_score(self) -> None:
         print(f"현재 최고 점수: {self.best_score}")
+        if not self.history:
+            print("저장된 플레이 기록이 없습니다.")
+            return
+        print("\n=== 플레이 기록 (최신순) ===")
+        for idx, entry in enumerate(reversed(self.history), start=1):
+            qc = entry["question_count"]
+            sc = entry["score"]
+            print(f"{idx}. {entry['at']} | 문제 {qc}개 | 점수 {sc}/{qc}")
 
     def _dispatch_menu(self, choice: Menu) -> None:
         if choice == Menu.PLAY:
