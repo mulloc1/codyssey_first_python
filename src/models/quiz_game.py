@@ -77,6 +77,39 @@ class QuizGame:
                 continue
             return answer
 
+    def _get_answer_with_hint(self, quiz: Quiz) -> tuple[int | None, bool]:
+        used_hint = False
+
+        while True:
+            try:
+                raw = input("정답 번호를 입력하세요 (1-4, h: 힌트): ").strip()
+            except (KeyboardInterrupt, EOFError):
+                self._handle_safe_shutdown()
+                return None, used_hint
+
+            if not raw:
+                print("입력을 확인해주세요. 비어 있는 값은 사용할 수 없습니다.")
+                continue
+
+            normalized = raw.lower()
+            if normalized in {"h", "hint", "힌트"}:
+                if used_hint:
+                    print("힌트는 한 번만 볼 수 있습니다.")
+                    continue
+                print(f"힌트: {quiz.hint}")
+                used_hint = True
+                continue
+
+            try:
+                answer = int(raw)
+            except ValueError:
+                print("숫자 또는 h로 입력해주세요.")
+                continue
+            if not 1 <= answer <= 4:
+                print("1에서 4 사이 숫자를 입력해주세요.")
+                continue
+            return answer, used_hint
+
     def _get_question_count(self, max_count: int) -> int | None:
         while True:
             try:
@@ -165,6 +198,7 @@ class QuizGame:
             return
 
         correct_count = 0
+        score = 0
         # list()로 복사하여 원본 데이터를 변경하지 않음
         shuffled_quizzes = list(self.quizzes)
         random.shuffle(shuffled_quizzes)
@@ -177,19 +211,24 @@ class QuizGame:
 
             print(f"\n[{index}/{total}]")
             print(quiz.format_question())
-            user_answer = self._get_quiz_answer()
+            user_answer, used_hint = self._get_answer_with_hint(quiz)
             if user_answer is None:
                 return
 
             if quiz.is_correct(user_answer):
                 print("정답입니다!")
                 correct_count += 1
+                if used_hint:
+                    print("힌트를 사용하여 이 문제 점수는 0점입니다.")
+                else:
+                    score += 1
             else:
                 print(f"오답입니다. 정답은 {quiz.answer}번입니다.")
 
-        print(f"\n결과: {correct_count}/{total}")
-        if correct_count > self.best_score:
-            self.best_score = correct_count
+        print(f"\n정답 수: {correct_count}/{total}")
+        print(f"이번 점수: {score}/{total}")
+        if score > self.best_score:
+            self.best_score = score
             print(f"최고 점수를 갱신했습니다: {self.best_score}")
         else:
             print(f"최고 점수는 {self.best_score}입니다.")
@@ -207,11 +246,15 @@ class QuizGame:
                 return
             choices.append(choice)
 
+        hint = self._get_non_empty_text("힌트를 입력하세요: ")
+        if hint is None:
+            return
+
         answer = self._get_quiz_answer()
         if answer is None:
             return
 
-        new_quiz = Quiz(question=question, choices=choices, answer=answer)
+        new_quiz = Quiz(question=question, choices=choices, answer=answer, hint=hint)
         self.quizzes.append(new_quiz)
         self.save_state()
         print("새 퀴즈가 추가되었습니다.")

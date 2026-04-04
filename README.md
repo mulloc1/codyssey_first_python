@@ -22,7 +22,9 @@ python main.py
 4. 퀴즈 목록 출력(`list_quizzes`)
 5. 최고 점수 확인(`show_best_score`)
 6. 상태 파일 저장/불러오기(`save_state`, `load_state`)
-7. 입력 오류 방지(비어 있는 입력, 숫자 범위 등 재입력 처리)
+7. 문제 수 선택 및 랜덤 출제
+8. 풀이 중 힌트 보기와 힌트 사용 시 점수 차감
+9. 입력 오류 방지(비어 있는 입력, 숫자 범위 등 재입력 처리)
 
 ## 파일 구조
 
@@ -58,6 +60,7 @@ first_python/
 - `state.json`은 게임 실행 중 사용자의 진행 상황을 저장하는 파일입니다.
 - 기본적으로 `QuizGame(state_file_path="state.json")`처럼, **현재 실행 위치의 `state.json`** (작업 디렉터리 기준 경로)에 생성됩니다.
 - `load_state()`에서 `state.json`이 없으면 기본 퀴즈(`build_default_quizzes()`)로 시작하고, 파일이 손상되었거나 읽기/스키마 오류가 나면 기본 데이터로 복구합니다.
+- 현재 스키마는 각 퀴즈에 필수 `hint`를 포함합니다. 예전 스키마의 `state.json`은 자동 마이그레이션하지 않으며, 필요하면 새 파일을 다시 생성해 사용합니다.
 
 ### 스키마(최소 예시)
 
@@ -68,7 +71,7 @@ first_python/
       "question": "문제 질문",
       "choices": ["선택1", "선택2", "선택3", "선택4"],
       "answer": 2,
-      "hint": null
+      "hint": "정답을 유추할 수 있는 짧은 설명"
     }
   ],
   "best_score": 1
@@ -79,5 +82,5 @@ first_python/
   - `question`: 질문 문자열
   - `choices`: 선택지 4개 문자열 배열
   - `answer`: 정답 번호(1..4 범위의 정수)
-  - `hint`: 힌트 문자열 또는 `null`
+  - `hint`: 힌트 문자열
 - `best_score`: 최고 점수(정수)

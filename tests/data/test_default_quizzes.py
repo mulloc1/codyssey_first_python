@@ -39,6 +39,12 @@ class TestDefaultQuizzes(unittest.TestCase):
 
         self.assertTrue(expected_questions.issubset(questions))
 
+    def test_build_default_quizzes_provide_non_empty_hints(self) -> None:
+        # 기본 퀴즈는 모두 비어 있지 않은 힌트를 가져야 한다.
+        quizzes = build_default_quizzes()
+
+        self.assertTrue(all(isinstance(quiz.hint, str) and quiz.hint for quiz in quizzes))
+
 
 if __name__ == "__main__":
     unittest.main()

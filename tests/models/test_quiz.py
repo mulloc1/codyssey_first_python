@@ -7,54 +7,66 @@ class TestQuizValidation(unittest.TestCase):
     def test_init_raises_attribute_error_when_question_is_not_string(self) -> None:
         # question이 문자열이 아니면 strip 호출 단계에서 AttributeError가 발생한다.
         with self.assertRaises(AttributeError):
-            Quiz(123, ["a", "b", "c", "d"], 1)  # type: ignore[arg-type]
+            Quiz(123, ["a", "b", "c", "d"], 1, "힌트")  # type: ignore[arg-type]
 
     def test_init_rejects_empty_question(self) -> None:
         # question이 공백/빈 문자열이면 예외가 발생해야 한다.
         with self.assertRaises(ValueError) as context:
-            Quiz("   ", ["a", "b", "c", "d"], 1)
+            Quiz("   ", ["a", "b", "c", "d"], 1, "힌트")
 
         self.assertEqual(str(context.exception), "question must not be empty")
 
     def test_init_rejects_non_list_choices(self) -> None:
         # choices가 list 타입이 아니면 예외가 발생해야 한다.
         with self.assertRaises(ValueError) as context:
-            Quiz("문제", "a,b,c,d", 1)  # type: ignore[arg-type]
+            Quiz("문제", "a,b,c,d", 1, "힌트")  # type: ignore[arg-type]
 
         self.assertEqual(str(context.exception), "choices must be a list")
 
     def test_init_rejects_choices_length_not_four(self) -> None:
         # choices 길이가 4가 아니면 예외가 발생해야 한다.
         with self.assertRaises(ValueError) as context:
-            Quiz("문제", ["a", "b", "c"], 1)
+            Quiz("문제", ["a", "b", "c"], 1, "힌트")
 
         self.assertEqual(str(context.exception), "choices must contain exactly 4 items")
 
     def test_init_rejects_empty_choice_item(self) -> None:
         # choices 항목 중 공백/빈 문자열이 있으면 예외가 발생해야 한다.
         with self.assertRaises(ValueError) as context:
-            Quiz("문제", ["a", " ", "c", "d"], 1)
+            Quiz("문제", ["a", " ", "c", "d"], 1, "힌트")
 
         self.assertEqual(str(context.exception), "choice must not be empty")
 
     def test_init_raises_attribute_error_when_choice_item_is_not_string(self) -> None:
         # choices 항목이 문자열이 아니면 strip 호출 단계에서 AttributeError가 발생한다.
         with self.assertRaises(AttributeError):
-            Quiz("문제", ["a", 2, "c", "d"], 1)  # type: ignore[list-item]
+            Quiz("문제", ["a", 2, "c", "d"], 1, "힌트")  # type: ignore[list-item]
 
     def test_init_rejects_non_integer_answer(self) -> None:
         # answer가 정수가 아니면 예외가 발생해야 한다.
         with self.assertRaises(ValueError) as context:
-            Quiz("문제", ["a", "b", "c", "d"], "1")  # type: ignore[arg-type]
+            Quiz("문제", ["a", "b", "c", "d"], "1", "힌트")  # type: ignore[arg-type]
 
         self.assertEqual(str(context.exception), "answer must be an integer")
 
     def test_init_rejects_out_of_range_answer(self) -> None:
         # answer가 1..4 범위를 벗어나면 예외가 발생해야 한다.
         with self.assertRaises(ValueError) as context:
-            Quiz("문제", ["a", "b", "c", "d"], 5)
+            Quiz("문제", ["a", "b", "c", "d"], 5, "힌트")
 
         self.assertEqual(str(context.exception), "answer must be in range 1..4")
+
+    def test_init_rejects_empty_hint(self) -> None:
+        # hint가 공백/빈 문자열이면 예외가 발생해야 한다.
+        with self.assertRaises(ValueError) as context:
+            Quiz("문제", ["a", "b", "c", "d"], 1, "   ")
+
+        self.assertEqual(str(context.exception), "hint must not be empty")
+
+    def test_init_raises_attribute_error_when_hint_is_not_string(self) -> None:
+        # hint가 문자열이 아니면 strip 호출 단계에서 AttributeError가 발생한다.
+        with self.assertRaises(AttributeError):
+            Quiz("문제", ["a", "b", "c", "d"], 1, 123)  # type: ignore[arg-type]
 
     def test_init_normalizes_question_choices_and_hint(self) -> None:
         # 유효한 입력이면 문자열 필드가 trim 되어 저장되어야 한다.
@@ -62,11 +74,13 @@ class TestQuizValidation(unittest.TestCase):
             question="  파이썬 문제  ",
             choices=[" a ", "b ", " c", "d"],
             answer=2,
+            hint="  힌트 문장  ",
         )
 
         self.assertEqual(quiz.question, "파이썬 문제")
         self.assertEqual(quiz.choices, ["a", "b", "c", "d"])
         self.assertEqual(quiz.answer, 2)
+        self.assertEqual(quiz.hint, "힌트 문장")
 
 
 class TestQuizFromDict(unittest.TestCase):
@@ -84,12 +98,14 @@ class TestQuizFromDict(unittest.TestCase):
                 "question": "  문제  ",
                 "choices": [" a ", "b", "c", "d "],
                 "answer": 3,
+                "hint": "  힌트  ",
             }
         )
 
         self.assertEqual(quiz.question, "문제")
         self.assertEqual(quiz.choices, ["a", "b", "c", "d"])
         self.assertEqual(quiz.answer, 3)
+        self.assertEqual(quiz.hint, "힌트")
 
     def test_from_dict_propagates_constructor_validation_error(self) -> None:
         # dict 값이 잘못되면 생성자 검증 예외가 그대로 전달되어야 한다.
@@ -99,6 +115,7 @@ class TestQuizFromDict(unittest.TestCase):
                     "question": "문제",
                     "choices": ["a", "b", "c", "d"],
                     "answer": 9,
+                    "hint": "힌트",
                 }
             )
 
@@ -111,6 +128,7 @@ class TestQuizFromDict(unittest.TestCase):
                 {
                     "choices": ["a", "b", "c", "d"],
                     "answer": 1,
+                    "hint": "힌트",
                 }
             )
 

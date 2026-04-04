@@ -22,8 +22,8 @@ class TestQuizGame(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
             game.quizzes = [
-                Quiz("Q1", ["a", "b", "c", "d"], 2),
-                Quiz("Q2", ["a", "b", "c", "d"], 1),
+                Quiz("Q1", ["a", "b", "c", "d"], 2, "Q1 힌트"),
+                Quiz("Q2", ["a", "b", "c", "d"], 1, "Q2 힌트"),
             ]
             with (
                 patch("src.models.quiz_game.random.shuffle", side_effect=lambda quizzes: None),
@@ -38,7 +38,7 @@ class TestQuizGame(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             state_path = Path(temp_dir) / "state.json"
             game = QuizGame(state_file_path=state_path)
-            game.quizzes = [Quiz("Q1", ["a", "b", "c", "d"], 1)]
+            game.quizzes = [Quiz("Q1", ["a", "b", "c", "d"], 1, "Q1 힌트")]
             with patch("builtins.input", side_effect=["1", "1"]):
                 game.play_quiz()
             self.assertTrue(state_path.exists())
@@ -50,7 +50,7 @@ class TestQuizGame(unittest.TestCase):
         # `KeyboardInterrupt`가 발생해도 게임 상태 플래그(`_is_running`)가 안전하게 꺼지는지 확인한다.
         with tempfile.TemporaryDirectory() as temp_dir:
             game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
-            game.quizzes = [Quiz("Q1", ["a", "b", "c", "d"], 1)]
+            game.quizzes = [Quiz("Q1", ["a", "b", "c", "d"], 1, "Q1 힌트")]
             with patch("builtins.input", side_effect=["1", KeyboardInterrupt]):
                 game.play_quiz()
             self.assertFalse(game._is_running)
@@ -60,8 +60,8 @@ class TestQuizGame(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
             game.quizzes = [
-                Quiz("Q1", ["a", "b", "c", "d"], 1),
-                Quiz("Q2", ["a", "b", "c", "d"], 1),
+                Quiz("Q1", ["a", "b", "c", "d"], 1, "Q1 힌트"),
+                Quiz("Q2", ["a", "b", "c", "d"], 1, "Q2 힌트"),
             ]
 
             def reverse_quizzes(quizzes: list[Quiz]) -> None:
@@ -85,13 +85,31 @@ class TestQuizGame(unittest.TestCase):
             )
             self.assertEqual([quiz.question for quiz in game.quizzes], ["Q1", "Q2"])
 
+    def test_play_quiz_shows_hint_and_deducts_score(self) -> None:
+        # 힌트를 본 뒤 정답을 맞히면 정답 수는 올라가지만 점수는 차감되는지 확인한다.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            game.quizzes = [Quiz("Q1", ["a", "b", "c", "d"], 1, "정답은 숫자 타입입니다.")]
+
+            with (
+                patch("src.models.quiz_game.random.shuffle", side_effect=lambda quizzes: None),
+                patch("builtins.input", side_effect=["1", "h", "1"]),
+                patch("builtins.print") as print_mock,
+            ):
+                game.play_quiz()
+
+            print_mock.assert_any_call("힌트: 정답은 숫자 타입입니다.")
+            print_mock.assert_any_call("힌트를 사용하여 이 문제 점수는 0점입니다.")
+            print_mock.assert_any_call("이번 점수: 0/1")
+            self.assertEqual(game.best_score, 0)
+
     def test_play_quiz_retries_invalid_question_count_input(self) -> None:
         # 문제 수 입력이 유효하지 않으면 재입력을 요구하고, 유효한 값 이후 정상 진행하는지 확인한다.
         with tempfile.TemporaryDirectory() as temp_dir:
             game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
             game.quizzes = [
-                Quiz("Q1", ["a", "b", "c", "d"], 1),
-                Quiz("Q2", ["a", "b", "c", "d"], 1),
+                Quiz("Q1", ["a", "b", "c", "d"], 1, "Q1 힌트"),
+                Quiz("Q2", ["a", "b", "c", "d"], 1, "Q2 힌트"),
             ]
             with (
                 patch("builtins.input", side_effect=["", "abc", "3", "1", "1"]),
@@ -108,7 +126,7 @@ class TestQuizGame(unittest.TestCase):
         # 문제 수 입력 단계에서 인터럽트가 발생해도 안전 종료 플래그가 꺼지는지 확인한다.
         with tempfile.TemporaryDirectory() as temp_dir:
             game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
-            game.quizzes = [Quiz("Q1", ["a", "b", "c", "d"], 1)]
+            game.quizzes = [Quiz("Q1", ["a", "b", "c", "d"], 1, "Q1 힌트")]
             with patch("builtins.input", side_effect=KeyboardInterrupt):
                 game.play_quiz()
             self.assertFalse(game._is_running)
@@ -118,9 +136,9 @@ class TestQuizGame(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
             game.quizzes = [
-                Quiz("Q1", ["a", "b", "c", "d"], 1),
-                Quiz("Q2", ["a", "b", "c", "d"], 1),
-                Quiz("Q3", ["a", "b", "c", "d"], 1),
+                Quiz("Q1", ["a", "b", "c", "d"], 1, "Q1 힌트"),
+                Quiz("Q2", ["a", "b", "c", "d"], 1, "Q2 힌트"),
+                Quiz("Q3", ["a", "b", "c", "d"], 1, "Q3 힌트"),
             ]
 
             def reverse_quizzes(quizzes: list[Quiz]) -> None:
@@ -160,7 +178,7 @@ class TestQuizGame(unittest.TestCase):
             initial_count = len(game.quizzes)
             with patch(
                 "builtins.input",
-                side_effect=["새 문제", "선택1", "선택2", "선택3", "선택4", "2", "힌트"],
+                side_effect=["새 문제", "선택1", "선택2", "선택3", "선택4", "새 힌트", "2"],
             ):
                 game.add_quiz()
 
@@ -168,7 +186,7 @@ class TestQuizGame(unittest.TestCase):
             self.assertTrue(state_path.exists())
 
             reloaded = QuizGame(state_file_path=state_path)
-            self.assertTrue(any(q.question == "새 문제" for q in reloaded.quizzes))
+            self.assertTrue(any(q.question == "새 문제" and q.hint == "새 힌트" for q in reloaded.quizzes))
 
     def test_add_quiz_retries_invalid_answer_input(self) -> None:
         # 정답 입력이 유효하지 않을 때 `add_quiz()`가 재입력을 요구하며, 최종적으로 정답이 정상 반영되는지 확인한다.
@@ -182,16 +200,16 @@ class TestQuizGame(unittest.TestCase):
                     "b",
                     "c",
                     "d",
+                    "힌트",
                     "",
                     "abc",
                     "9",
                     "1",
-                    "",
                 ],
             ):
                 game.add_quiz()
 
-            self.assertTrue(any(q.question == "문제" and q.answer == 1 for q in game.quizzes))
+            self.assertTrue(any(q.question == "문제" and q.answer == 1 and q.hint == "힌트" for q in game.quizzes))
 
     def test_add_quiz_interrupt_keeps_data_unchanged(self) -> None:
         # `add_quiz()` 도중 `KeyboardInterrupt`가 발생하면 퀴즈 목록이 변경되지 않는지 확인한다.
@@ -226,8 +244,8 @@ class TestQuizGame(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
             game.quizzes = [
-                Quiz("문제A", ["a", "b", "c", "d"], 1),
-                Quiz("문제B", ["a", "b", "c", "d"], 2),
+                Quiz("문제A", ["a", "b", "c", "d"], 1, "문제A 힌트"),
+                Quiz("문제B", ["a", "b", "c", "d"], 2, "문제B 힌트"),
             ]
             with patch("builtins.print") as print_mock:
                 game.list_quizzes()
@@ -243,7 +261,7 @@ class TestQuizGame(unittest.TestCase):
             game = QuizGame(state_file_path=state_path)
             with patch(
                 "builtins.input",
-                side_effect=["목록 확인 문제", "a", "b", "c", "d", "1", ""],
+                side_effect=["목록 확인 문제", "a", "b", "c", "d", "목록 힌트", "1"],
             ):
                 game.add_quiz()
 
