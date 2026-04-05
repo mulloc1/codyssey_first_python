@@ -1,3 +1,18 @@
+from src.messages import (
+    QUIZ_CHOICE_ITEM_EMPTY,
+    QUIZ_CHOICE_NOT_STR,
+    QUIZ_CHOICES_COUNT_FOUR,
+    QUIZ_CHOICES_NOT_LIST,
+    QUIZ_FROM_DICT_NOT_DICT,
+    QUIZ_HINT_EMPTY,
+    QUIZ_HINT_NOT_STR,
+    QUIZ_QUESTION_EMPTY,
+    QUIZ_QUESTION_NOT_STR,
+    QUIZ_ANSWER_NOT_INT,
+    format_menu_range_error,
+)
+
+
 class Quiz:
     """Model that represents one multiple-choice quiz item."""
 
@@ -8,42 +23,50 @@ class Quiz:
         answer: int,
         hint: str,
     ) -> None:
+        if not isinstance(question, str):
+            raise ValueError(QUIZ_QUESTION_NOT_STR)
+
         # question 공백 제거
         question_clean = question.strip()
         if not question_clean:
-            raise ValueError("question must not be empty")
+            raise ValueError(QUIZ_QUESTION_EMPTY)
 
         # choices 타입 검증
         # JSON 로드 데이터는 신뢰할 수 없으므로 choices 타입/구조를 검증한다.
         if not isinstance(choices, list):
-            raise ValueError("choices must be a list")
+            raise ValueError(QUIZ_CHOICES_NOT_LIST)
 
         # 선택지 갯수 검증
         if len(choices) != 4:
-            raise ValueError("choices must contain exactly 4 items")
+            raise ValueError(QUIZ_CHOICES_COUNT_FOUR)
 
         # 각 선택지 별로 공백 제거
         normalized_choices: list[str] = []
         for choice in choices:
+            if not isinstance(choice, str):
+                raise ValueError(QUIZ_CHOICE_NOT_STR)
             choice_clean = choice.strip()
             if not choice_clean:
-                raise ValueError("choice must not be empty")
+                raise ValueError(QUIZ_CHOICE_ITEM_EMPTY)
             normalized_choices.append(choice_clean)
 
 
         # answer 타입 및 범위 검증
         # JSON 로드 데이터는 신뢰할 수 없으므로 answer 타입/범위를 검증한다.
         if not isinstance(answer, int):
-            raise ValueError("answer must be an integer")
+            raise ValueError(QUIZ_ANSWER_NOT_INT)
 
         # 정답 범위 검증
         if answer < 1 or answer > 4:
-            raise ValueError("answer must be in range 1..4")
+            raise ValueError(format_menu_range_error(1, 4))
+
+        if not isinstance(hint, str):
+            raise ValueError(QUIZ_HINT_NOT_STR)
 
         # hint 공백 제거
         hint_clean = hint.strip()
         if not hint_clean:
-            raise ValueError("hint must not be empty")
+            raise ValueError(QUIZ_HINT_EMPTY)
 
         self.question = question_clean
         self.choices = normalized_choices
@@ -76,7 +99,7 @@ class Quiz:
     @classmethod
     def from_dict(cls, data: dict) -> "Quiz":
         if not isinstance(data, dict):
-            raise ValueError("data must be a dictionary")
+            raise ValueError(QUIZ_FROM_DICT_NOT_DICT)
         return cls(
             question=data["question"],
             choices=data["choices"],

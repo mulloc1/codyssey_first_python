@@ -5,6 +5,16 @@ from enum import IntEnum
 from pathlib import Path
 
 from src.data import build_default_quizzes
+from src.messages import (
+    MSG_EMPTY_INPUT,
+    MSG_HINT_ALREADY_USED,
+    MSG_INVALID_STATE_SCHEMA,
+    MSG_NOT_AN_INTEGER,
+    MSG_NUMBER_OR_HINT,
+    MSG_QUIZ_CREATE_FAILED,
+    MSG_STATE_RECOVER,
+    format_menu_range_error,
+)
 from src.models.quiz import Quiz
 
 
@@ -76,17 +86,17 @@ class QuizGame:
                 return None
 
             if not raw:
-                print("입력을 확인해주세요. 비어 있는 값은 사용할 수 없습니다.")
+                print(MSG_EMPTY_INPUT)
                 continue
             try:
                 choice_number = int(raw)
             except ValueError:
-                print("숫자로 입력해주세요.")
+                print(MSG_NOT_AN_INTEGER)
                 continue
             try:
                 return Menu(choice_number)
             except ValueError:
-                print("1에서 6 사이 숫자를 입력해주세요.")
+                print(format_menu_range_error(1, 6))
                 continue
 
     def _get_quiz_answer(self) -> int | None:
@@ -98,15 +108,15 @@ class QuizGame:
                 return None
 
             if not raw:
-                print("입력을 확인해주세요. 비어 있는 값은 사용할 수 없습니다.")
+                print(MSG_EMPTY_INPUT)
                 continue
             try:
                 answer = int(raw)
             except ValueError:
-                print("숫자로 입력해주세요.")
+                print(MSG_NOT_AN_INTEGER)
                 continue
             if not 1 <= answer <= 4:
-                print("1에서 4 사이 숫자를 입력해주세요.")
+                print(format_menu_range_error(1, 4))
                 continue
             return answer
 
@@ -121,13 +131,13 @@ class QuizGame:
                 return None, used_hint
 
             if not raw:
-                print("입력을 확인해주세요. 비어 있는 값은 사용할 수 없습니다.")
+                print(MSG_EMPTY_INPUT)
                 continue
 
             normalized = raw.lower()
             if normalized in {"h", "hint", "힌트"}:
                 if used_hint:
-                    print("힌트는 한 번만 볼 수 있습니다.")
+                    print(MSG_HINT_ALREADY_USED)
                     continue
                 print(f"힌트: {quiz.hint}")
                 used_hint = True
@@ -136,10 +146,10 @@ class QuizGame:
             try:
                 answer = int(raw)
             except ValueError:
-                print("숫자 또는 h로 입력해주세요.")
+                print(MSG_NUMBER_OR_HINT)
                 continue
             if not 1 <= answer <= 4:
-                print("1에서 4 사이 숫자를 입력해주세요.")
+                print(format_menu_range_error(1, 4))
                 continue
             return answer, used_hint
 
@@ -152,15 +162,15 @@ class QuizGame:
                 return None
 
             if not raw:
-                print("입력을 확인해주세요. 비어 있는 값은 사용할 수 없습니다.")
+                print(MSG_EMPTY_INPUT)
                 continue
             try:
                 question_count = int(raw)
             except ValueError:
-                print("숫자로 입력해주세요.")
+                print(MSG_NOT_AN_INTEGER)
                 continue
             if not 1 <= question_count <= max_count:
-                print(f"1에서 {max_count} 사이 숫자를 입력해주세요.")
+                print(format_menu_range_error(1, max_count))
                 continue
             return question_count
 
@@ -172,7 +182,7 @@ class QuizGame:
                 self._handle_safe_shutdown()
                 return None
             if not raw:
-                print("입력을 확인해주세요. 비어 있는 값은 사용할 수 없습니다.")
+                print(MSG_EMPTY_INPUT)
                 continue
             return raw
 
@@ -192,12 +202,19 @@ class QuizGame:
             quizzes_data = data["quizzes"]
             best_score = data["best_score"]
             if not isinstance(quizzes_data, list) or not isinstance(best_score, int):
-                raise ValueError("invalid state schema")
+                raise ValueError(MSG_INVALID_STATE_SCHEMA)
             self.quizzes = [Quiz.from_dict(item) for item in quizzes_data]
             self.best_score = best_score
             self.history = _parse_history_from_state(data)
-        except (OSError, json.JSONDecodeError, KeyError, ValueError, TypeError):
-            print("상태 파일을 읽을 수 없어 기본 데이터로 복구합니다.")
+        except (
+            OSError,
+            json.JSONDecodeError,
+            KeyError,
+            ValueError,
+            TypeError,
+            AttributeError,
+        ):
+            print(MSG_STATE_RECOVER)
             self.quizzes = build_default_quizzes()
             self.best_score = 0
             self.history = []
@@ -297,7 +314,11 @@ class QuizGame:
         if answer is None:
             return
 
-        new_quiz = Quiz(question=question, choices=choices, answer=answer, hint=hint)
+        try:
+            new_quiz = Quiz(question=question, choices=choices, answer=answer, hint=hint)
+        except (ValueError, AttributeError):
+            print(MSG_QUIZ_CREATE_FAILED)
+            return
         self.quizzes.append(new_quiz)
         self.save_state()
         print("새 퀴즈가 추가되었습니다.")
@@ -320,15 +341,15 @@ class QuizGame:
                 return None
 
             if not raw:
-                print("입력을 확인해주세요. 비어 있는 값은 사용할 수 없습니다.")
+                print(MSG_EMPTY_INPUT)
                 continue
             try:
                 index = int(raw)
             except ValueError:
-                print("숫자로 입력해주세요.")
+                print(MSG_NOT_AN_INTEGER)
                 continue
             if not 1 <= index <= total:
-                print(f"1에서 {total} 사이 숫자를 입력해주세요.")
+                print(format_menu_range_error(1, total))
                 continue
             return index
 

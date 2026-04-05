@@ -5,6 +5,8 @@ from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
 
+from src.data import build_default_quizzes
+from src.messages import MSG_QUIZ_CREATE_FAILED, MSG_STATE_RECOVER
 from src.models.quiz import Quiz
 from src.models.quiz_game import Menu, QuizGame
 
@@ -77,6 +79,33 @@ class TestQuizGame(unittest.TestCase):
             self.assertEqual(game.history, [])
             self.assertEqual(game.best_score, 2)
             self.assertEqual(len(game.quizzes), 1)
+
+    def test_load_state_invalid_quiz_question_type_resets_to_defaults(self) -> None:
+        # JSON에 question 타입이 잘못되면 복구 메시지 후 기본 퀴즈·점수·기록이 초기화되는지 확인한다.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            state_path = Path(temp_dir) / "state.json"
+            payload = {
+                "quizzes": [
+                    {
+                        "question": 123,
+                        "choices": ["a", "b", "c", "d"],
+                        "answer": 1,
+                        "hint": "hint",
+                    }
+                ],
+                "best_score": 7,
+                "history": [],
+            }
+            state_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            with patch("builtins.print") as print_mock:
+                game = QuizGame(state_file_path=state_path)
+            print_mock.assert_any_call(MSG_STATE_RECOVER)
+            self.assertEqual(game.best_score, 0)
+            self.assertEqual(game.history, [])
+            self.assertEqual(
+                [q.to_dict() for q in game.quizzes],
+                [q.to_dict() for q in build_default_quizzes()],
+            )
 
     def test_play_quiz_appends_history_with_fixed_timestamp(self) -> None:
         # 라운드 완료 시 history에 시각·문제 수·점수가 append되는지 확인한다.
@@ -269,6 +298,27 @@ class TestQuizGame(unittest.TestCase):
                 game.add_quiz()
 
             self.assertTrue(any(q.question == "문제" and q.answer == 1 and q.hint == "힌트" for q in game.quizzes))
+
+    def test_add_quiz_constructor_failure_prints_message_and_keeps_quizzes(self) -> None:
+        # Quiz 생성이 실패해도 안내 후 목록이 바뀌지 않아야 한다.
+        with tempfile.TemporaryDirectory() as temp_dir:
+            game = QuizGame(state_file_path=Path(temp_dir) / "state.json")
+            initial_count = len(game.quizzes)
+            with (
+                patch(
+                    "src.models.quiz_game.Quiz",
+                    side_effect=ValueError("forced"),
+                ),
+                patch(
+                    "builtins.input",
+                    side_effect=["문제", "a", "b", "c", "d", "힌트", "1"],
+                ),
+                patch("builtins.print") as print_mock,
+            ):
+                game.add_quiz()
+
+            self.assertEqual(len(game.quizzes), initial_count)
+            print_mock.assert_any_call(MSG_QUIZ_CREATE_FAILED)
 
     def test_add_quiz_interrupt_keeps_data_unchanged(self) -> None:
         # `add_quiz()` 도중 `KeyboardInterrupt`가 발생하면 퀴즈 목록이 변경되지 않는지 확인한다.
