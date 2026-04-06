@@ -220,3 +220,6 @@ git log --oneline --graph --all -30
 | 자동 검증(회귀) | `tests/` 아래 해당 모듈의 테스트 메서드 추가·수정 |
 
 새 기능을 넣을 때는 가능하면 **`Quiz`는 문항 도메인**, **`QuizGame`은 유스케이스**에만 얹어서, 책임이 섞이지 않게 유지하는 것이 좋다.
+
+
+# git clone/pull test
