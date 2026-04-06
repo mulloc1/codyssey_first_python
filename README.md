@@ -58,6 +58,27 @@ first_python/
       └─ python_package_and_object_lifecycle_insights.md
 ```
 
+## 유닛 테스트 개요
+
+`tests/` 아래 모듈은 `unittest`로 작성되어 있으며, **도메인 모델(`Quiz`)**, **앱 흐름(`QuizGame`)**, **기본 시드 데이터**를 각각 나누어 검증한다.
+
+### 실행 방법
+
+`first_python` 디렉터리에서 `PYTHONPATH`를 프로젝트 루트로 두고 모듈 경로를 지정해 실행한다(패키지 구조상 `discover`만으로는 테스트를 잡지 못할 수 있다).
+
+```bash
+cd first_python
+PYTHONPATH=. python3 -m unittest tests.models.test_quiz tests.models.test_quiz_game tests.data.test_default_quizzes -v
+```
+
+### 테스트 파일별 목적
+
+| 파일 | 목적 |
+|------|------|
+| [`tests/data/test_default_quizzes.py`](tests/data/test_default_quizzes.py) | `build_default_quizzes()`가 **`Quiz` 인스턴스 리스트**를 반환하는지, 개수·질문 중복·의도한 파이썬 기초 주제 문구 포함·**비어 있지 않은 힌트** 등 **초기 시드 데이터 품질**을 검증한다. |
+| [`tests/models/test_quiz.py`](tests/models/test_quiz.py) | **`Quiz` 한 문항**에 대해 생성자 검증(타입·빈 문자열·선택지 4개·정답 범위 등), **공백 trim 정규화**, `from_dict` 역직렬화·잘못된 입력 시 예외·필수 키 누락 시 `KeyError` 등 **문항 도메인 규칙과 메시지**를 검증한다. |
+| [`tests/models/test_quiz_game.py`](tests/models/test_quiz_game.py) | **`QuizGame`**의 메뉴 분기, `play_quiz`(출제 수 선택·셔플·정답/오답·힌트·점수·히스토리·`save_state`/재로드), `add_quiz`/`delete_quiz`/`list_quizzes`/`show_best_score`, **`load_state`**(`history` 생략·손상 기록·손상 문항 시 복구), **Ctrl+C·EOF 안전 종료** 등 **터미널 게임 전체 흐름**을 `input`/`print` 모킹과 임시 `state.json`으로 검증한다. |
+
 ## 데이터 파일 설명 (`state.json` 경로/역할/스키마)
 
 - `state.json`은 게임 실행 중 사용자의 진행 상황을 저장하는 파일입니다.

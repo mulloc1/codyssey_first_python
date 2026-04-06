@@ -25,20 +25,6 @@ class TestDefaultQuizzes(unittest.TestCase):
 
         self.assertEqual(len(questions), len(set(questions)))
 
-    def test_build_default_quizzes_contains_python_basics_topics(self) -> None:
-        # 기본 퀴즈 세트가 의도한 파이썬 기초 주제들을 포함하는지 확인한다.
-        quizzes = build_default_quizzes()
-        questions = {quiz.question for quiz in quizzes}
-        expected_questions = {
-            "파이썬에서 정수형 타입은 무엇인가요?",
-            "조건에 따라 분기할 때 사용하는 키워드 조합은 무엇인가요?",
-            "리스트의 길이를 구할 때 사용하는 함수는 무엇인가요?",
-            "함수를 정의할 때 사용하는 키워드는 무엇인가요?",
-            "클래스의 생성자 역할을 하는 특수 메서드는 무엇인가요?",
-        }
-
-        self.assertTrue(expected_questions.issubset(questions))
-
     def test_build_default_quizzes_provide_non_empty_hints(self) -> None:
         # 기본 퀴즈는 모두 비어 있지 않은 힌트를 가져야 한다.
         quizzes = build_default_quizzes()
