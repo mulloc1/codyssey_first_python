@@ -221,5 +221,42 @@ git log --oneline --graph --all -30
 
 새 기능을 넣을 때는 가능하면 **`Quiz`는 문항 도메인**, **`QuizGame`은 유스케이스**에만 얹어서, 책임이 섞이지 않게 유지하는 것이 좋다.
 
+## Git `clone` / `pull` 실습 기록
 
-# git clone/pull test
+과제(`docs/subject.md`)의 **Git 저장소 복제 실습**에 따라, 별도 디렉터리에서 저장소를 복제한 뒤 변경을 푸시하고, 기존 로컬 작업 디렉터리에서 `pull`로 반영했다.
+
+### 1. 복제 디렉터리에서 `clone` → 수정 → `commit` → `push`
+
+```bash
+mkdir clone_test
+cd clone_test
+git clone https://github.com/mulloc1/codyssey_first_python.git
+cd codyssey_first_python
+echo "git clone/pull test" >> README.md
+git add .
+git commit -m "git clone/pull test"
+git push origin main
+```
+
+- `bfd1fde` 대비 변경은 `README.md` 하단에 한 줄이 추가되는 것뿐이다(`git diff bfd1fde`로 확인 가능).
+
+### 2. 원래 로컬 프로젝트에서 `pull`
+
+복제본에서 푸시한 뒤, 처음 개발하던 저장소 디렉터리로 이동해 원격 `main`을 가져왔다.
+
+```bash
+git pull origin main
+```
+
+출력 요약:
+
+```text
+From github.com:mulloc1/codyssey_first_python
+ * branch            main       -> FETCH_HEAD
+Updating bfd1fde..ac039f7
+Fast-forward
+ README.md | 3 +++
+ 1 file changed, 3 insertions(+)
+```
+
+- `bfd1fde`에서 `ac039f7`(`git clone/pull test` 커밋)으로 fast-forward 병합되었고, `README.md` 변경만 반영되었다.
